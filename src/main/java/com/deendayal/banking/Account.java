@@ -38,38 +38,38 @@ public class Account {
     }
 
     public void deposit(Money amount) {
-        credit(amount, TransactionType.DEPOSIT);
+        credit(amount, TransactionType.DEPOSIT, null);
     }
 
     public void withdraw(Money amount) {
-        debit(amount, TransactionType.WITHDRAWAL);
+        debit(amount, TransactionType.WITHDRAWAL, null);
     }
 
-    void debitForTransfer(Money amount) {
-        debit(amount, TransactionType.TRANSFER_OUT);
+    void debitForTransfer(Money amount, String toId) {
+        debit(amount, TransactionType.TRANSFER_OUT, toId);
     }
 
-    void creditForTransfer(Money amount) {
-        credit(amount, TransactionType.TRANSFER_IN);
+    void creditForTransfer(Money amount, String fromId) {
+        credit(amount, TransactionType.TRANSFER_IN, fromId);
     }
 
-    private void credit(Money amount, TransactionType type) {
+    private void credit(Money amount, TransactionType type, String counterpartyId) {
         requirePositive(amount);
         balance = balance.plus(amount);
-        record(type, amount);
+        record(type, amount, counterpartyId);
     }
 
-    private void debit(Money amount, TransactionType type) {
+    private void debit(Money amount, TransactionType type, String counterpartyId) {
         requirePositive(amount);
         if (amount.compareTo(balance) > 0) {
             throw new InsufficientFundsException(amount, balance);
         }
         balance = balance.minus(amount);
-        record(type, amount);
+        record(type, amount, counterpartyId);
     }
 
-    private void record(TransactionType type, Money amount) {
-        ledger.add(new Transaction(type, amount, balance, clock.instant()));
+    private void record(TransactionType type, Money amount, String counterpartyId) {
+        ledger.add(new Transaction(type, amount, balance, clock.instant(), counterpartyId));
     }
 
     private static void requirePositive(Money amount) {

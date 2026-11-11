@@ -3,7 +3,8 @@ package com.deendayal.banking;
 import java.time.Instant;
 import java.util.Objects;
 
-public record Transaction(TransactionType type, Money amount, Money balanceAfter, Instant timestamp) {
+public record Transaction(TransactionType type, Money amount, Money balanceAfter,
+                          Instant timestamp, String counterpartyId) {
 
     public Transaction {
         Objects.requireNonNull(type, "type must not be null");

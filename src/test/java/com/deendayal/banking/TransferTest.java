@@ -115,4 +115,15 @@ class TransferTest {
 
         assertThat(service.getBalance("ACC-2")).isEqualTo(Money.of("20.00"));
     }
+
+    @Test
+    void transferEntriesNameTheOtherSide() {
+        service.openAccount("ACC-1", Money.of("100.00"));
+        service.openAccount("ACC-2", Money.of("20.00"));
+
+        service.transfer("ACC-1", "ACC-2", Money.of("30.00"));
+
+        assertThat(ledgerOf("ACC-1").get(0).counterpartyId()).isEqualTo("ACC-2");
+        assertThat(ledgerOf("ACC-2").get(0).counterpartyId()).isEqualTo("ACC-1");
+    }
 }

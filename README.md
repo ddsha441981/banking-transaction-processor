@@ -18,7 +18,7 @@ A small, test-driven service that processes banking transactions across multiple
 | Deposit and withdrawal with validation | Done    |
 | Per-account ledger with timestamps | Done    |
 | In-memory repository and `BankingService` | Done    |
-| Transfer between accounts (atomic) | Planned |
+| Transfer between accounts | Done (single-threaded) |
 | Balance and history queries | Done    |
 | Thread-safety | Planned |
 
@@ -56,6 +56,9 @@ Every rejection test also asserts that the balance and the ledger are unchanged.
 **Withdrawing the full balance is allowed.**
 There is a boundary test for it, plus a one-cent overdraft test on the other side of the line.
 
+**Transfers validate first, then move money.**
+`BankingService.transfer` looks up both accounts before touching either, then debits the source and credits the target. Everything that can fail (unknown account, zero amount, insufficient funds) fails before any state changes, and the credit cannot fail once the debit has succeeded, so a transfer is never applied halfway. A dedicated test covers the classic bug of debiting the source before discovering the target does not exist. Both accounts get a ledger entry (`TRANSFER_OUT` and `TRANSFER_IN`) that names the counterparty. The transfer methods on `Account` are package-private, so only the service can create transfer entries.
+
 
 **Ledger design.**
 - Each `Transaction` is an immutable record holding type, amount, `balanceAfter` and timestamp. `balanceAfter` lets a reader audit an account without replaying every earlier entry.
@@ -77,6 +80,7 @@ There is a boundary test for it, plus a one-cent overdraft test on the other sid
 - Single currency, no exchange rates, no fees, no overdraft limits.
 - No idempotency keys, so a retried operation is applied twice.
 - Account is mutable. This is simple and works for the current scope, but an immutable design with explicit state transitions could be easier to reason about under concurrency.
+- Transfers are atomic only for a single caller. Under concurrent use, two threads could both pass the funds check and overdraw an account (check-then-act race). Planned fix: lock both accounts in a consistent order.
 
 ## What I would do next
 1. Add the repository and `BankingService`, so callers use one entry point.

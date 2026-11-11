@@ -68,4 +68,16 @@ class AccountLedgerTest {
 
         assertThat(account.getTransactions().get(0).timestamp()).isEqualTo(now);
     }
+
+    @Test
+    void depositsAndWithdrawalsHaveNoCounterparty() {
+        Account account = new Account("ACC-1", Money.of("100.00"));
+
+        account.deposit(Money.of("5.00"));
+        account.withdraw(Money.of("1.00"));
+
+        assertThat(account.getTransactions())
+                .extracting(Transaction::counterpartyId)
+                .containsOnlyNulls();
+    }
 }

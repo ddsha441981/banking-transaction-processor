@@ -36,7 +36,7 @@ public class BankingService {
         }
         Account source = findAccount(fromId);
         Account target = findAccount(toId);
-        source.debitForTransfer(amount);
-        target.creditForTransfer(amount);
+        source.debitForTransfer(amount, toId);
+        target.creditForTransfer(amount, fromId);
     }
 }
