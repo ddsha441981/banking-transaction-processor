@@ -1,5 +1,6 @@
 package com.deendayal.banking;
 
+import java.util.List;
 import java.util.Objects;
 
 public class BankingService {
@@ -38,5 +39,8 @@ public class BankingService {
         Account target = findAccount(toId);
         source.debitForTransfer(amount, toId);
         target.creditForTransfer(amount, fromId);
+    }
+    public List<Transaction> getTransactionHistory(String id) {
+        return findAccount(id).getTransactions();
     }
 }
