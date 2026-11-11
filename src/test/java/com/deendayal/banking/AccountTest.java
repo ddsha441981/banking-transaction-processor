@@ -5,8 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.*;
 
 class AccountTest {
 
@@ -26,7 +25,7 @@ class AccountTest {
 
     @Test
     void rejectsNegativeOpeningBalance() {
-        assertThatIllegalArgumentException()
+        assertThatNullPointerException()
                 .isThrownBy(() -> new Account("ACC-1", null));
     }
 }
