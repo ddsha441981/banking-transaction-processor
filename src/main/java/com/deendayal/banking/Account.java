@@ -1,20 +1,28 @@
 package com.deendayal.banking;
 
-import java.math.BigDecimal;
+import java.time.Clock;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public class Account {
 
     private final String id;
+    private final Clock clock;
+    private final List<Transaction> ledger = new ArrayList<>();
     private Money balance;
 
     public Account(String id, Money openingBalance) {
+        this(id, openingBalance, Clock.systemUTC());
+    }
+
+    public Account(String id, Money openingBalance, Clock clock) {
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("Account id must not be blank");
         }
-
         this.id = id;
         this.balance = Objects.requireNonNull(openingBalance, "Opening balance must not be null");
+        this.clock = Objects.requireNonNull(clock, "Clock must not be null");
     }
 
     public String getId() {
@@ -25,10 +33,14 @@ public class Account {
         return balance;
     }
 
+    public List<Transaction> getTransactions() {
+        return List.copyOf(ledger);
+    }
 
     public void deposit(Money amount) {
         requirePositive(amount);
         balance = balance.plus(amount);
+        record(TransactionType.DEPOSIT, amount);
     }
 
     public void withdraw(Money amount) {
@@ -37,6 +49,11 @@ public class Account {
             throw new InsufficientFundsException(amount, balance);
         }
         balance = balance.minus(amount);
+        record(TransactionType.WITHDRAWAL, amount);
+    }
+
+    private void record(TransactionType type, Money amount) {
+        ledger.add(new Transaction(type, amount, balance, clock.instant()));
     }
 
     private static void requirePositive(Money amount) {

@@ -9,17 +9,74 @@ A small, test-driven service that processes banking transactions across multiple
 - Per-account ledger with timestamps
 - Queries for balance and transaction history
 
+## Status
+
+| Capability | Status |
+|---|---|
+| `Money` value object | Done |
+| `Account` with id and balance | Done |
+| Deposit and withdrawal with validation | Done |
+| Per-account ledger with timestamps | Done |
+| In-memory repository and `BankingService` | Planned |
+| Transfer between accounts (atomic) | Planned |
+| Balance and history queries | Planned |
+| Thread-safety | Planned |
+
+## How to run
+
+Requires Java 17 and Maven.
+
+```
+mvn clean test
+```
+
+There is no `main` class yet. The behaviour is documented and verified by the tests.
+
 ## Assumptions
 - Single currency
 - In-memory storage only (no persistence)
-- Money is modelled with `BigDecimal`, never `double`
+- Amounts have at most two decimal places
+- Account ids are unique strings supplied by the caller
 
-## Design Designs
-- Money rejects over-precise input rather than silently rounding, to avoid hidden loss.
-- A failed operation does not change the state: every rejection test verifies that the balance remains unchanged. This lays the foundation for Phase 7 (transfer atomicity).
+## Design decisions and trade-offs
 
-## How to run
--
+**Money is a value object, not a raw `BigDecimal`.**
+`Money` is immutable, never negative and always has two decimal places. Over-precise input such as `10.005` is rejected instead of being silently rounded, because hidden rounding is a classic source of ledger discrepancies. Validation lives in one place, so `Account` never has to check for negative values.
+This came out of a refactor: the first version of `Account` took a `BigDecimal` and validated it itself. Introducing `Money` removed that duplication.
+
+**Business rules have their own exceptions.**
+`InvalidAmountException` (zero amount) and `InsufficientFundsException` (overdraft) describe what went wrong in domain terms. `Money` still throws `IllegalArgumentException` for technical misuse such as negative input. All exceptions are unchecked, because they signal a caller error or a violated rule and checked exceptions would add noise to every signature. Checked exceptions were the alternative.
+
+**A failed operation never changes state.**
+Every rejection test also asserts that the balance and the ledger are unchanged. This is the foundation for atomic transfers.
+
+**Withdrawing the full balance is allowed.**
+There is a boundary test for it, plus a one-cent overdraft test on the other side of the line.
+
+**Ledger design.**
+- Each `Transaction` is an immutable record holding type, amount, `balanceAfter` and timestamp. `balanceAfter` lets a reader audit an account without replaying every earlier entry.
+- The opening balance is not a ledger entry. The ledger records only operations performed after the account is opened.
+- `getTransactions()` returns a copy, so callers cannot modify the ledger.
+- Only successful operations are recorded.
+
+**Time is injected.**
+`Account` takes a `Clock` (default `Clock.systemUTC()`), and timestamps are `Instant` values. Tests use a fixed clock, so timestamps are deterministic and there is no sleeping or flakiness. `Instant` avoids any time zone ambiguity.
+
+## Testing approach
+- Developed test-first. The git history shows the red/green/refactor steps, and refactors are separate commits.
+- Test names describe behaviour and read as documentation of the contract.
+- Value-object rules are tested in `MoneyTest`. Account tests do not repeat them.
 
 ## Limitations
-- Account is not thread-safe yet; concurrency handled in a later commit.
+- `Account` is not thread-safe yet. Concurrency handling is planned as a later step.
+- No persistence. State is lost when the process stops.
+- Single currency, no exchange rates, no fees, no overdraft limits.
+- No idempotency keys, so a retried operation is applied twice.
+- Account is mutable. This is simple and works for the current scope, but an immutable design with explicit state transitions could be easier to reason about under concurrency.
+
+## What I would do next
+1. Add the repository and `BankingService`, so callers use one entry point.
+2. Implement atomic transfers that write a ledger entry on both sides.
+3. Add balance and history queries.
+4. Make concurrent transfers safe by locking accounts in a consistent order to avoid deadlock.
+5. Add idempotency keys and a persistence layer.
