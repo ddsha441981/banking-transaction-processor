@@ -11,15 +11,15 @@ A small, test-driven service that processes banking transactions across multiple
 
 ## Status
 
-| Capability | Status |
-|---|---|
-| `Money` value object | Done |
-| `Account` with id and balance | Done |
-| Deposit and withdrawal with validation | Done |
-| Per-account ledger with timestamps | Done |
-| In-memory repository and `BankingService` | Planned |
+| Capability | Status  |
+|---|---------|
+| `Money` value object | Done    |
+| `Account` with id and balance | Done    |
+| Deposit and withdrawal with validation | Done    |
+| Per-account ledger with timestamps | Done    |
+| In-memory repository and `BankingService` | Done    |
 | Transfer between accounts (atomic) | Planned |
-| Balance and history queries | Planned |
+| Balance and history queries | Done    |
 | Thread-safety | Planned |
 
 ## How to run
@@ -47,11 +47,15 @@ This came out of a refactor: the first version of `Account` took a `BigDecimal` 
 **Business rules have their own exceptions.**
 `InvalidAmountException` (zero amount) and `InsufficientFundsException` (overdraft) describe what went wrong in domain terms. `Money` still throws `IllegalArgumentException` for technical misuse such as negative input. All exceptions are unchecked, because they signal a caller error or a violated rule and checked exceptions would add noise to every signature. Checked exceptions were the alternative.
 
+**Service layer and repository.**
+`BankingService` is the single entry point and never hands out `Account` objects, so callers cannot bypass the validation rules. Storage sits behind an `AccountRepository` interface, so a database could replace the in-memory map without touching the service. Account id uniqueness is enforced with `ConcurrentHashMap.putIfAbsent`, so the check and the insert are one atomic step.
+
 **A failed operation never changes state.**
 Every rejection test also asserts that the balance and the ledger are unchanged. This is the foundation for atomic transfers.
 
 **Withdrawing the full balance is allowed.**
 There is a boundary test for it, plus a one-cent overdraft test on the other side of the line.
+
 
 **Ledger design.**
 - Each `Transaction` is an immutable record holding type, amount, `balanceAfter` and timestamp. `balanceAfter` lets a reader audit an account without replaying every earlier entry.
