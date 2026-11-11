@@ -31,6 +31,14 @@ public class Account {
         balance = balance.plus(amount);
     }
 
+    public void withdraw(Money amount) {
+        requirePositive(amount);
+        if (amount.compareTo(balance) > 0) {
+            throw new InsufficientFundsException(amount, balance);
+        }
+        balance = balance.minus(amount);
+    }
+
     private static void requirePositive(Money amount) {
         Objects.requireNonNull(amount, "Amount must not be null");
         if (amount.isZero()) {

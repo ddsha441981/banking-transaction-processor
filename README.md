@@ -16,6 +16,7 @@ A small, test-driven service that processes banking transactions across multiple
 
 ## Design Designs
 - Money rejects over-precise input rather than silently rounding, to avoid hidden loss.
+- A failed operation does not change the state: every rejection test verifies that the balance remains unchanged. This lays the foundation for Phase 7 (transfer atomicity).
 
 ## How to run
 -
