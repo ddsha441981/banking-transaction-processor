@@ -31,4 +31,25 @@ class AccountTest {
         assertThatNullPointerException()
                 .isThrownBy(() -> new Account("ACC-1", null));
     }
+
+
+
+    @Test
+    void depositIncreasesBalance() {
+        Account account = new Account("ACC-1", Money.of("100.00"));
+
+        account.deposit(Money.of("25.50"));
+
+        assertThat(account.getBalance()).isEqualTo(Money.of("125.50"));
+    }
+
+    @Test
+    void multipleDepositsAccumulate() {
+        Account account = new Account("ACC-1", Money.ZERO);
+
+        account.deposit(Money.of("10.00"));
+        account.deposit(Money.of("0.01"));
+
+        assertThat(account.getBalance()).isEqualTo(Money.of("10.01"));
+    }
 }

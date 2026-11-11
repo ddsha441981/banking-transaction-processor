@@ -24,4 +24,17 @@ public class Account {
     public Money getBalance() {
         return balance;
     }
+
+
+    public void deposit(Money amount) {
+        requirePositive(amount);
+        balance = balance.plus(amount);
+    }
+
+    private static void requirePositive(Money amount) {
+        Objects.requireNonNull(amount, "Amount must not be null");
+        if (amount.isZero()) {
+            throw new InvalidAmountException("Amount must be greater than zero");
+        }
+    }
 }
