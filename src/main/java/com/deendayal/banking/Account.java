@@ -5,15 +5,15 @@ import java.math.BigDecimal;
 public class Account {
 
     private final String id;
-    private BigDecimal balance;
+    private Money balance;
 
-    public Account(String id, BigDecimal openingBalance) {
+    public Account(String id, Money openingBalance) {
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("Account id must not be blank");
         }
-        if (openingBalance == null || openingBalance.signum() < 0) {
-            throw new IllegalArgumentException("Opening balance must not be negative");
-        }
+
+
+
         this.id = id;
         this.balance = openingBalance;
     }
@@ -22,7 +22,7 @@ public class Account {
         return id;
     }
 
-    public BigDecimal getBalance() {
+    public Money getBalance() {
         return balance;
     }
 }
