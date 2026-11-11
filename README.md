@@ -19,3 +19,6 @@ A small, test-driven service that processes banking transactions across multiple
 
 ## How to run
 -
+
+## Limitations
+- Account is not thread-safe yet; concurrency handled in a later commit.
