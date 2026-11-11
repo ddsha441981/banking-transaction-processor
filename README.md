@@ -21,20 +21,57 @@ A small, test-driven service that processes banking transactions across multiple
 | Transfer between accounts (atomic) | Done |
 | Balance and history queries | Done |
 | Thread-safety | Done (single JVM) |
+| Interactive console for manual testing | Done |
 | REST API | Not built (see Scope decisions) |
 
 ## How to run
 
 Requires Java 17 and Maven.
 
+Run the tests:
+
 ```
 mvn clean test
 ```
 
-There is no `main` class. The behaviour is documented and verified by the tests, and `BankingService` is the entry point.
+Try it by hand with the console. Type `demo` for a scripted walk-through, or `help` for the commands:
+
+```
+mvn -q clean compile
+java -cp target/classes com.deendayal.banking.BankingConsole
+```
+
+Example session:
+
+```
+> open ALICE 100.00
+> open BOB 50.00
+> transfer ALICE BOB 30.00
+> balance ALICE
+> history BOB
+> withdraw ALICE 1000
+> exit
+```
+
+The console is a thin convenience layer over `BankingService`. It only translates text commands into service calls and contains no business rules.
+
+## Requirements coverage
+
+| Requirement from the brief | Where it is tested |
+|---|---|
+| Accounts with unique ids and balances | `AccountTest`, `InMemoryAccountRepositoryTest`, `BankingServiceTest` |
+| Deposit | `AccountTest`, `BankingServiceTest` |
+| Withdrawal | `AccountTest`, `BankingServiceTest` |
+| Transfer | `TransferTest` |
+| No overdrafts, no invalid amounts | `MoneyTest`, `AccountTest`, `TransferTest` |
+| Per-account ledger with timestamps | `AccountLedgerTest`, `BankingServiceTest` |
+| Balance and history queries | `BankingServiceTest`, `TransferTest` |
+| Behaviour under concurrent use (beyond the brief) | `ConcurrencyTest` |
+| All of the above through the public API only | `RequirementsAcceptanceTest` |
 
 ## Scope decisions
 - The brief asks for "APIs to query balances and histories". I built them as service methods (`BankingService`) and did not add an HTTP layer: with a 3-4 hour timebox I preferred to spend the time on correctness (validation, atomic transfers, concurrency) and tests. A thin Spring Boot controller over `BankingService` is the natural next step, and the service never exposes `Account` objects, so it could be added without touching the domain.
+- A small interactive console (`BankingConsole`) is included only so the service can be exercised by hand. It is not the REST API and has a few tests of its own.
 - Account ids are case-sensitive and used as given. No trimming or normalisation.
 
 ## Assumptions
@@ -81,9 +118,12 @@ Each `Account` guards its balance and ledger with its own monitor, so the funds 
 
 ## Testing approach
 - Developed test-first. The git history shows the red/green/refactor steps, and refactors are separate commits.
+- Commits prefixed `test:` are intentionally committed before the code they describe, so they may not compile on their own. Every `feat:` and `refactor:` commit, and the final `main`, builds and passes.
 - Test names describe behaviour and read as documentation of the contract.
 - Value-object rules are tested in `MoneyTest`. Account tests do not repeat them.
 - Concurrency tests start many threads at the same instant and run opposite transfers under a timeout, so a deadlock shows up as a failing test instead of a hanging build.
+- `RequirementsAcceptanceTest` walks through each requirement of the brief using only the public service API.
+- The console was also exercised by hand with its `demo` command.
 
 ## Limitations
 - No persistence. State is lost when the process stops.
@@ -93,6 +133,7 @@ Each `Account` guards its balance and ledger with its own monitor, so the funds 
 - Reading two balances is not an atomic snapshot: a caller who reads account A then B can see a transfer half-way between the two reads.
 - `Account` is mutable and protected by locks. This is simple and fits the current scope, but an immutable design with explicit state transitions could be easier to reason about.
 - Accounts are never removed, so accounts and ledgers grow for the life of the process.
+- The console has minimal input handling: it reports errors but does not offer editing, quoting or autocompletion.
 
 ## What I would do next
 1. A thin REST layer over `BankingService`.
