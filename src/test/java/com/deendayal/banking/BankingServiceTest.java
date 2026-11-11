@@ -2,6 +2,8 @@ package com.deendayal.banking;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -120,5 +122,26 @@ class BankingServiceTest {
 
         assertThat(before).hasSize(1);
         assertThat(service.getTransactionHistory("ACC-1")).hasSize(2);
+    }
+
+    @Test
+    void historyIsInChronologicalOrderWithTimestampsFromTheClock() {
+        Instant start = Instant.parse("2026-11-10T09:00:00Z");
+        MutableClock clock = new MutableClock(start);
+        BankingService timedService = new BankingService(new InMemoryAccountRepository(), clock);
+        timedService.openAccount("ACC-1", Money.of("100.00"));
+
+        timedService.deposit("ACC-1", Money.of("10.00"));
+        clock.advance(Duration.ofMinutes(5));
+        timedService.withdraw("ACC-1", Money.of("4.00"));
+        clock.advance(Duration.ofMinutes(5));
+        timedService.deposit("ACC-1", Money.of("1.00"));
+
+        assertThat(timedService.getTransactionHistory("ACC-1"))
+                .extracting(Transaction::type, Transaction::timestamp)
+                .containsExactly(
+                        tuple(TransactionType.DEPOSIT, start),
+                        tuple(TransactionType.WITHDRAWAL, start.plus(Duration.ofMinutes(5))),
+                        tuple(TransactionType.DEPOSIT, start.plus(Duration.ofMinutes(10))));
     }
 }
