@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class TransferTest {
 
     private final AccountRepository repository = new InMemoryAccountRepository();
-    private final BankingService service = new BankingService(repository);
+    private final BankingService service = new BankingService(new InMemoryAccountRepository());
 
     @Test
     void transferMovesFundsBetweenAccounts() {
@@ -53,7 +53,7 @@ class TransferTest {
     }
 
     private List<Transaction> ledgerOf(String id) {
-        return repository.findById(id).orElseThrow().getTransactions();
+        return service.getTransactionHistory(id);
     }
 
 

@@ -21,6 +21,7 @@ A small, test-driven service that processes banking transactions across multiple
 | Transfer between accounts | Done (single-threaded) |
 | Balance and history queries | Done    |
 | Thread-safety | Planned |
+| Transaction history query | Done |
 
 ## How to run
 
@@ -58,6 +59,12 @@ There is a boundary test for it, plus a one-cent overdraft test on the other sid
 
 **Transfers validate first, then move money.**
 `BankingService.transfer` looks up both accounts before touching either, then debits the source and credits the target. Everything that can fail (unknown account, zero amount, insufficient funds) fails before any state changes, and the credit cannot fail once the debit has succeeded, so a transfer is never applied halfway. A dedicated test covers the classic bug of debiting the source before discovering the target does not exist. Both accounts get a ledger entry (`TRANSFER_OUT` and `TRANSFER_IN`) that names the counterparty. The transfer methods on `Account` are package-private, so only the service can create transfer entries.
+
+**History is a read-only snapshot.**
+`getTransactionHistory` returns an immutable copy in the order operations happened. Callers cannot change the ledger through it, and a list obtained earlier does not change when later operations occur. Tests cover both. The service never exposes `Account` objects, so the ledger can only grow through validated operations.
+
+**One clock for the whole service.**
+`BankingService` passes its `Clock` to every account it opens, so all timestamps come from one source. Tests use a controllable clock to assert exact timestamps and ordering without sleeping.
 
 
 **Ledger design.**
