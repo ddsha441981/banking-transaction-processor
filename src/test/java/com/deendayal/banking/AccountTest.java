@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 
 class AccountTest {
@@ -51,5 +52,23 @@ class AccountTest {
         account.deposit(Money.of("0.01"));
 
         assertThat(account.getBalance()).isEqualTo(Money.of("10.01"));
+    }
+
+    @Test
+    void depositRejectsZeroAmount() {
+        Account account = new Account("ACC-1", Money.of("100.00"));
+
+        assertThatThrownBy(() -> account.deposit(Money.ZERO))
+                .isInstanceOf(InvalidAmountException.class)
+                .hasMessageContaining("greater than zero");
+        assertThat(account.getBalance()).isEqualTo(Money.of("100.00"));
+    }
+
+    @Test
+    void depositRejectsNullAmount() {
+        Account account = new Account("ACC-1", Money.of("100.00"));
+
+        assertThatNullPointerException()
+                .isThrownBy(() -> account.deposit(null));
     }
 }
