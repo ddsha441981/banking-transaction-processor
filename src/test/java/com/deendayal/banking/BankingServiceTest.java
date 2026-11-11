@@ -9,6 +9,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 class BankingServiceTest {
 
@@ -143,5 +144,17 @@ class BankingServiceTest {
                         tuple(TransactionType.DEPOSIT, start),
                         tuple(TransactionType.WITHDRAWAL, start.plus(Duration.ofMinutes(5))),
                         tuple(TransactionType.DEPOSIT, start.plus(Duration.ofMinutes(10))));
+    }
+
+    @Test
+    void nullAccountIdIsRejectedWithAClearMessage() {
+        service.openAccount("ACC-1", Money.of("10.00"));
+
+        assertThatNullPointerException()
+                .isThrownBy(() -> service.getBalance(null))
+                .withMessageContaining("Account id");
+        assertThatNullPointerException()
+                .isThrownBy(() -> service.transfer("ACC-1", null, Money.of("1.00")))
+                .withMessageContaining("Account id");
     }
 }

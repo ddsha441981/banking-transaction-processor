@@ -41,10 +41,13 @@ public class BankingService {
 
         synchronized (first) {
             synchronized (second) {
-                source.debitForTransfer(amount, toId);
-                target.creditForTransfer(amount, fromId);
+                moveFunds(source, target, amount);
             }
         }
+    }
+    private static void moveFunds(Account source, Account target, Money amount) {
+        source.debitForTransfer(amount, target.getId());
+        target.creditForTransfer(amount, source.getId());
     }
 
     public Money getBalance(String id) {
@@ -56,6 +59,7 @@ public class BankingService {
     }
 
     private Account findAccount(String id) {
+        Objects.requireNonNull(id, "Account id must not be null");
         return accounts.findById(id).orElseThrow(() -> new AccountNotFoundException(id));
     }
 }
