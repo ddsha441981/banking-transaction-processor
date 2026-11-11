@@ -1,6 +1,7 @@
 package com.deendayal.banking;
 
 import java.math.BigDecimal;
+import java.util.Objects;
 
 public class Account {
 
@@ -12,10 +13,8 @@ public class Account {
             throw new IllegalArgumentException("Account id must not be blank");
         }
 
-
-
         this.id = id;
-        this.balance = openingBalance;
+        this.balance = Objects.requireNonNull(openingBalance, "Opening balance must not be null");
     }
 
     public String getId() {
