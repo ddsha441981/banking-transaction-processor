@@ -38,18 +38,34 @@ public class Account {
     }
 
     public void deposit(Money amount) {
-        requirePositive(amount);
-        balance = balance.plus(amount);
-        record(TransactionType.DEPOSIT, amount);
+        credit(amount, TransactionType.DEPOSIT);
     }
 
     public void withdraw(Money amount) {
+        debit(amount, TransactionType.WITHDRAWAL);
+    }
+
+    void debitForTransfer(Money amount) {
+        debit(amount, TransactionType.TRANSFER_OUT);
+    }
+
+    void creditForTransfer(Money amount) {
+        credit(amount, TransactionType.TRANSFER_IN);
+    }
+
+    private void credit(Money amount, TransactionType type) {
+        requirePositive(amount);
+        balance = balance.plus(amount);
+        record(type, amount);
+    }
+
+    private void debit(Money amount, TransactionType type) {
         requirePositive(amount);
         if (amount.compareTo(balance) > 0) {
             throw new InsufficientFundsException(amount, balance);
         }
         balance = balance.minus(amount);
-        record(TransactionType.WITHDRAWAL, amount);
+        record(type, amount);
     }
 
     private void record(TransactionType type, Money amount) {

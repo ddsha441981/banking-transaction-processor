@@ -29,4 +29,14 @@ public class BankingService {
     private Account findAccount(String id) {
         return accounts.findById(id).orElseThrow(() -> new AccountNotFoundException(id));
     }
+
+    public void transfer(String fromId, String toId, Money amount) {
+        if (Objects.equals(fromId, toId)) {
+            throw new InvalidTransferException("Cannot transfer to the same account: " + fromId);
+        }
+        Account source = findAccount(fromId);
+        Account target = findAccount(toId);
+        source.debitForTransfer(amount);
+        target.creditForTransfer(amount);
+    }
 }
