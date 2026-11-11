@@ -29,27 +29,27 @@ public class Account {
         return id;
     }
 
-    public Money getBalance() {
+    public synchronized Money getBalance() {
         return balance;
     }
 
-    public List<Transaction> getTransactions() {
+    public synchronized List<Transaction> getTransactions() {
         return List.copyOf(ledger);
     }
 
-    public void deposit(Money amount) {
+    public synchronized void deposit(Money amount) {
         credit(amount, TransactionType.DEPOSIT, null);
     }
 
-    public void withdraw(Money amount) {
+    public synchronized void withdraw(Money amount) {
         debit(amount, TransactionType.WITHDRAWAL, null);
     }
 
-    void debitForTransfer(Money amount, String toId) {
+    synchronized void debitForTransfer(Money amount, String toId) {
         debit(amount, TransactionType.TRANSFER_OUT, toId);
     }
 
-    void creditForTransfer(Money amount, String fromId) {
+    synchronized void creditForTransfer(Money amount, String fromId) {
         credit(amount, TransactionType.TRANSFER_IN, fromId);
     }
 

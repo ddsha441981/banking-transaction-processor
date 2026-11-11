@@ -36,8 +36,15 @@ public class BankingService {
         }
         Account source = findAccount(fromId);
         Account target = findAccount(toId);
-        source.debitForTransfer(amount, toId);
-        target.creditForTransfer(amount, fromId);
+        Account first = fromId.compareTo(toId) < 0 ? source : target;
+        Account second = (first == source) ? target : source;
+
+        synchronized (first) {
+            synchronized (second) {
+                source.debitForTransfer(amount, toId);
+                target.creditForTransfer(amount, fromId);
+            }
+        }
     }
 
     public Money getBalance(String id) {

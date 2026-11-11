@@ -22,6 +22,8 @@ A small, test-driven service that processes banking transactions across multiple
 | Balance and history queries | Done    |
 | Thread-safety | Planned |
 | Transaction history query | Done |
+| Thread-safety | Done (single JVM) |
+| Transfer between accounts | Done |
 
 ## How to run
 
@@ -65,7 +67,8 @@ There is a boundary test for it, plus a one-cent overdraft test on the other sid
 
 **One clock for the whole service.**
 `BankingService` passes its `Clock` to every account it opens, so all timestamps come from one source. Tests use a controllable clock to assert exact timestamps and ordering without sleeping.
-
+**Concurrency: one lock per account, transfers lock both in id order.**
+Each `Account` guards its balance and ledger with its own monitor, so the funds check, the balance update and the ledger append happen as one step. This prevents lost updates and overdrafts under contention, and keeps every ledger's last `balanceAfter` equal to the real balance. A transfer takes both account locks in a fixed order (by id), which makes it one unit and rules out the classic A->B / B->A deadlock. Locks are per account, so transfers between unrelated accounts do not block each other. The concurrency tests release many threads at once; the first version of them failed before the locking existed. Monitors were chosen over `ReentrantLock` for simplicity; `ReentrantLock` would allow timeouts and fair ordering if needed.
 
 **Ledger design.**
 - Each `Transaction` is an immutable record holding type, amount, `balanceAfter` and timestamp. `balanceAfter` lets a reader audit an account without replaying every earlier entry.
@@ -84,7 +87,9 @@ There is a boundary test for it, plus a one-cent overdraft test on the other sid
 ## Limitations
 - `Account` is not thread-safe yet. Concurrency handling is planned as a later step.
 - No persistence. State is lost when the process stops.
-- Single currency, no exchange rates, no fees, no overdraft limits.
+- Concurrency control works inside one JVM only. Multiple service instances would need database transactions or distributed locks.
+- Reading two balances is not an atomic snapshot: a caller who reads account A then B can see a transfer half-way between the two reads.
+- Accounts are never removed, so locks and ledgers grow for the life of the process.
 - No idempotency keys, so a retried operation is applied twice.
 - Account is mutable. This is simple and works for the current scope, but an immutable design with explicit state transitions could be easier to reason about under concurrency.
 - Transfers are atomic only for a single caller. Under concurrent use, two threads could both pass the funds check and overdraw an account (check-then-act race). Planned fix: lock both accounts in a consistent order.
