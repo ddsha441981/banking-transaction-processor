@@ -14,5 +14,8 @@ A small, test-driven service that processes banking transactions across multiple
 - In-memory storage only (no persistence)
 - Money is modelled with `BigDecimal`, never `double`
 
+## Design Designs
+- Money rejects over-precise input rather than silently rounding, to avoid hidden loss.
+
 ## How to run
 -
