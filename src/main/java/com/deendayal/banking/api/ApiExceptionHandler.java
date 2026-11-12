@@ -65,4 +65,14 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         problem.setProperty("code", code);
         return problem;
     }
+
+    @ExceptionHandler(IdempotencyKeyReusedException.class)
+    ProblemDetail idempotencyKeyReused(IdempotencyKeyReusedException e) {
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "IDEMPOTENCY_KEY_REUSED", e);
+    }
+
+    @ExceptionHandler(IdempotencyRequestInProgressException.class)
+    ProblemDetail idempotencyRequestInProgress(IdempotencyRequestInProgressException e) {
+        return problem(HttpStatus.CONFLICT, "IDEMPOTENCY_REQUEST_IN_PROGRESS", e);
+    }
 }

@@ -8,28 +8,32 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Instant;
 import java.util.List;
+import java.util.function.Supplier;
 
 @RestController
 @RequestMapping("/api")
 public class BankingController {
 
     private final BankingService bank;
+    private static final String IDEMPOTENCY_KEY = "Idempotency-Key";
 
-    public BankingController(BankingService bank) {
+    private final IdempotencyStore idempotency;
+
+    public BankingController(BankingService bank, IdempotencyStore idempotency) {
         this.bank = bank;
+        this.idempotency = idempotency;
     }
+
+//    public BankingController(BankingService bank) {
+//        this.bank = bank;
+//    }
 
     @PostMapping("/accounts")
     public ResponseEntity<BalanceResponse> openAccount(@Valid @RequestBody OpenAccountRequest request) {
@@ -55,22 +59,51 @@ public class BankingController {
     }
 
     @PostMapping("/accounts/{id}/deposits")
-    public BalanceResponse deposit(@PathVariable String id, @Valid @RequestBody AmountRequest request) {
-        bank.deposit(id, Money.of(request.amount()));
-        return balanceOf(id);
+    public ResponseEntity<BalanceResponse> deposit(
+            @PathVariable String id,
+            @Valid @RequestBody AmountRequest request,
+            @RequestHeader(name = IDEMPOTENCY_KEY, required = false) String key) {
+        Money amount = Money.of(request.amount()); // invalid input is rejected before the key is used
+        return idempotent(key, List.of("deposit", id, amount.toString()), () -> {
+            bank.deposit(id, amount);
+            return balanceOf(id);
+        });
     }
 
+
     @PostMapping("/accounts/{id}/withdrawals")
-    public BalanceResponse withdraw(@PathVariable String id, @Valid @RequestBody AmountRequest request) {
-        bank.withdraw(id, Money.of(request.amount()));
-        return balanceOf(id);
+    public ResponseEntity<BalanceResponse> withdraw(
+            @PathVariable String id,
+            @Valid @RequestBody AmountRequest request,
+            @RequestHeader(name = IDEMPOTENCY_KEY, required = false) String key) {
+        Money amount = Money.of(request.amount());
+        return idempotent(key, List.of("withdraw", id, amount.toString()), () -> {
+            bank.withdraw(id, amount);
+            return balanceOf(id);
+        });
     }
 
     @PostMapping("/transfers")
-    public TransferResponse transfer(@Valid @RequestBody TransferRequest request) {
-        String transferId = bank.transfer(request.fromAccountId(), request.toAccountId(),
-                Money.of(request.amount()));
-        return new TransferResponse(transferId);
+    public ResponseEntity<TransferResponse> transfer(
+            @Valid @RequestBody TransferRequest request,
+            @RequestHeader(name = IDEMPOTENCY_KEY, required = false) String key) {
+        Money amount = Money.of(request.amount());
+        List<String> fingerprint = List.of(
+                "transfer", request.fromAccountId(), request.toAccountId(), amount.toString());
+        return idempotent(key, fingerprint, () ->
+                new TransferResponse(bank.transfer(request.fromAccountId(), request.toAccountId(), amount)));
+    }
+
+    private <T> ResponseEntity<T> idempotent(String key, List<String> fingerprint, Supplier<T> operation) {
+        if (key == null) {
+            return ResponseEntity.ok(operation.get());
+        }
+        IdempotencyStore.Result<T> result = idempotency.execute(key, fingerprint, operation);
+        ResponseEntity.BodyBuilder response = ResponseEntity.ok();
+        if (result.replayed()) {
+            response.header("Idempotent-Replayed", "true");
+        }
+        return response.body(result.value());
     }
 
     @GetMapping("/accounts/{id}/transactions")
