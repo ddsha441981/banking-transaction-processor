@@ -51,7 +51,16 @@ mvn spring-boot:run
 | POST | `/api/transfers` | transfer `{"fromAccountId","toAccountId","amount"}` | 204 |
 | GET | `/api/accounts/{id}/transactions` | ledger, oldest first | 200 |
 
-Errors use RFC 7807 problem details: 404 unknown account, 409 duplicate account, 422 insufficient funds, 400 invalid amount, same-account transfer, missing field or malformed JSON.
+Errors use RFC 7807 problem details with an extra stable `code` that clients can branch on (the `detail` text may change):
+
+| Status | `code` | When |
+|---|---|---|
+| 404 | `ACCOUNT_NOT_FOUND` | unknown account |
+| 409 | `ACCOUNT_ALREADY_EXISTS` | duplicate id |
+| 422 | `INSUFFICIENT_FUNDS` | overdraft |
+| 400 | `INVALID_AMOUNT` | zero, negative or over-precise amount |
+| 400 | `INVALID_TRANSFER` | transfer to the same account |
+| 400 | `INVALID_REQUEST` | missing field, malformed JSON |
 
 Example:
 
@@ -92,7 +101,7 @@ curl localhost:8080/api/accounts/ALICE/transactions
 This came out of a refactor: the first version of `Account` took a `BigDecimal` and validated it itself. Introducing `Money` removed that duplication.
 
 **Business rules have their own exceptions.**
-`InvalidAmountException` (zero amount), `InsufficientFundsException` (overdraft), `InvalidTransferException` (transfer to the same account), `AccountNotFoundException` and `DuplicateAccountException` describe what went wrong in domain terms. `Money` still throws `IllegalArgumentException` for technical misuse such as negative input. All exceptions are unchecked, because they signal a caller error or a violated rule and checked exceptions would add noise to every signature. Checked exceptions were the alternative.
+`Money` throws `InvalidAmountException` for negative or over-precise input. It extends `IllegalArgumentException`, so code that only knows the standard type keeps working, and the API can still give it its own code.
 
 **A failed operation never changes state.**
 Every rejection test also asserts that the balance and the ledger are unchanged. This is the foundation for atomic transfers.
