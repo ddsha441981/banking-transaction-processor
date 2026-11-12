@@ -53,7 +53,7 @@ class ConcurrentApiTest {
             List<Integer> statuses = runConcurrently(tasks);
 
             // 1600 transfers in total, 800 each way; neither account can ever run dry
-            assertThat(statuses).hasSize(1600).containsOnly(204);
+            assertThat(statuses).hasSize(1600).containsOnly(200);
             assertThat(balance("A")).isEqualByComparingTo("1000.00");
             assertThat(balance("B")).isEqualByComparingTo("1000.00");
             // every transfer wrote one entry on each side

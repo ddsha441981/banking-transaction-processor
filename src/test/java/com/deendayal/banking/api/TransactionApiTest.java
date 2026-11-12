@@ -1,5 +1,6 @@
 package com.deendayal.banking.api;
 
+import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -97,7 +98,9 @@ class TransactionApiTest {
         send("/api/transfers", """
                 {"fromAccountId":"ALICE","toAccountId":"BOB","amount":30.00}
                 """)
-                .andExpect(status().isNoContent());
+//                .andExpect(status().isNoContent());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.transferId").isNotEmpty());
 
         assertBalance("ALICE", 70.0);
         assertBalance("BOB", 80.0);
@@ -133,9 +136,10 @@ class TransactionApiTest {
         send("/api/accounts/ALICE/deposits", """
                 {"amount":25.00}
                 """);
-        send("/api/transfers", """
+        String body = send("/api/transfers", """
                 {"fromAccountId":"ALICE","toAccountId":"BOB","amount":60.00}
-                """);
+                """).andReturn().getResponse().getContentAsString();
+        String transferId = JsonPath.read(body, "$.transferId");
 
         mvc.perform(get("/api/accounts/ALICE/transactions"))
                 .andExpect(status().isOk())
@@ -144,13 +148,16 @@ class TransactionApiTest {
                 .andExpect(jsonPath("$[0].amount").value(25.0))
                 .andExpect(jsonPath("$[0].balanceAfter").value(125.0))
                 .andExpect(jsonPath("$[0].timestamp").isNotEmpty())
+                .andExpect(jsonPath("$[0].transferId").doesNotExist())
                 .andExpect(jsonPath("$[1].type").value("TRANSFER_OUT"))
                 .andExpect(jsonPath("$[1].balanceAfter").value(65.0))
-                .andExpect(jsonPath("$[1].counterpartyId").value("BOB"));
+                .andExpect(jsonPath("$[1].counterpartyId").value("BOB"))
+                .andExpect(jsonPath("$[1].transferId").value(transferId));
 
         mvc.perform(get("/api/accounts/BOB/transactions"))
                 .andExpect(jsonPath("$[0].type").value("TRANSFER_IN"))
-                .andExpect(jsonPath("$[0].counterpartyId").value("ALICE"));
+                .andExpect(jsonPath("$[0].counterpartyId").value("ALICE"))
+                .andExpect(jsonPath("$[0].transferId").value(transferId));
     }
 
     @Test
@@ -169,5 +176,17 @@ class TransactionApiTest {
 
     private ResultActions send(String url, String json) throws Exception {
         return mvc.perform(post(url).contentType(MediaType.APPLICATION_JSON).content(json));
+    }
+
+    @Test
+    void transferMovesFundsAndReturnsItsId() throws Exception {
+        send("/api/transfers", """
+                {"fromAccountId":"ALICE","toAccountId":"BOB","amount":30.00}
+                """)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.transferId").isNotEmpty());
+
+        assertBalance("ALICE", 70.0);
+        assertBalance("BOB", 80.0);
     }
 }

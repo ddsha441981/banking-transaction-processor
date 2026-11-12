@@ -67,9 +67,10 @@ public class BankingController {
     }
 
     @PostMapping("/transfers")
-    public ResponseEntity<Void> transfer(@Valid @RequestBody TransferRequest request) {
-        bank.transfer(request.fromAccountId(), request.toAccountId(), Money.of(request.amount()));
-        return ResponseEntity.noContent().build();
+    public TransferResponse transfer(@Valid @RequestBody TransferRequest request) {
+        String transferId = bank.transfer(request.fromAccountId(), request.toAccountId(),
+                Money.of(request.amount()));
+        return new TransferResponse(transferId);
     }
 
     @GetMapping("/accounts/{id}/transactions")
@@ -83,13 +84,15 @@ public class BankingController {
     public record TransferRequest(@NotBlank String fromAccountId, @NotBlank String toAccountId,
                                   @NotNull BigDecimal amount) {
     }
+    public record TransferResponse(String transferId) {
+    }
 
     public record TransactionResponse(TransactionType type, BigDecimal amount, BigDecimal balanceAfter,
-                                      Instant timestamp, String counterpartyId) {
+                                      Instant timestamp, String counterpartyId, String transferId) {
 
         static TransactionResponse from(Transaction t) {
             return new TransactionResponse(t.type(), t.amount().amount(), t.balanceAfter().amount(),
-                    t.timestamp(), t.counterpartyId());
+                    t.timestamp(), t.counterpartyId(), t.transferId());
         }
     }
 }
