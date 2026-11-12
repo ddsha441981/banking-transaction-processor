@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.Objects;
 
 public record Transaction(TransactionType type, Money amount, Money balanceAfter,
-                          Instant timestamp, String counterpartyId) {
+                          Instant timestamp, String counterpartyId, String transferId) {
 
     public Transaction {
         Objects.requireNonNull(type, "type must not be null");

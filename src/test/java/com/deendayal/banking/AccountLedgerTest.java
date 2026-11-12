@@ -80,4 +80,16 @@ class AccountLedgerTest {
                 .extracting(Transaction::counterpartyId)
                 .containsOnlyNulls();
     }
+
+    @Test
+    void depositsAndWithdrawalsHaveNoTransferId() {
+        Account account = new Account("ACC-1", Money.of("100.00"));
+
+        account.deposit(Money.of("5.00"));
+        account.withdraw(Money.of("1.00"));
+
+        assertThat(account.getTransactions())
+                .extracting(Transaction::transferId)
+                .containsOnlyNulls();
+    }
 }

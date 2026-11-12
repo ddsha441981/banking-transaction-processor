@@ -38,40 +38,39 @@ public class Account {
     }
 
     public synchronized void deposit(Money amount) {
-        credit(amount, TransactionType.DEPOSIT, null);
+        credit(amount, TransactionType.DEPOSIT, null, null);
     }
 
     public synchronized void withdraw(Money amount) {
-        debit(amount, TransactionType.WITHDRAWAL, null);
+        debit(amount, TransactionType.WITHDRAWAL, null, null);
     }
 
-    synchronized void debitForTransfer(Money amount, String toId) {
-        debit(amount, TransactionType.TRANSFER_OUT, toId);
+    synchronized void debitForTransfer(Money amount, String toId, String transferId) {
+        debit(amount, TransactionType.TRANSFER_OUT, toId, transferId);
     }
 
-    synchronized void creditForTransfer(Money amount, String fromId) {
-        credit(amount, TransactionType.TRANSFER_IN, fromId);
+    synchronized void creditForTransfer(Money amount, String fromId, String transferId) {
+        credit(amount, TransactionType.TRANSFER_IN, fromId, transferId);
     }
 
-    private void credit(Money amount, TransactionType type, String counterpartyId) {
+    private void credit(Money amount, TransactionType type, String counterpartyId, String transferId) {
         requirePositive(amount);
         balance = balance.plus(amount);
-        record(type, amount, counterpartyId);
+        record(type, amount, counterpartyId, transferId);
     }
 
-    private void debit(Money amount, TransactionType type, String counterpartyId) {
+    private void debit(Money amount, TransactionType type, String counterpartyId, String transferId) {
         requirePositive(amount);
         if (amount.compareTo(balance) > 0) {
             throw new InsufficientFundsException(amount, balance);
         }
         balance = balance.minus(amount);
-        record(type, amount, counterpartyId);
+        record(type, amount, counterpartyId, transferId);
     }
 
-    private void record(TransactionType type, Money amount, String counterpartyId) {
-        ledger.add(new Transaction(type, amount, balance, clock.instant(), counterpartyId));
+    private void record(TransactionType type, Money amount, String counterpartyId, String transferId) {
+        ledger.add(new Transaction(type, amount, balance, clock.instant(), counterpartyId, transferId));
     }
-
     private static void requirePositive(Money amount) {
         Objects.requireNonNull(amount, "Amount must not be null");
         if (amount.isZero()) {
