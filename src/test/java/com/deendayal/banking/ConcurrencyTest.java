@@ -6,11 +6,14 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
@@ -132,5 +135,28 @@ class ConcurrencyTest {
 
     private long countOf(String id, TransactionType type) {
         return service.getTransactionHistory(id).stream().filter(t -> t.type() == type).count();
+    }
+
+    @Test
+    void everyConcurrentTransferPairsUpAcrossBothLedgers() {
+        service.openAccount("A", Money.of("1000.00"));
+        service.openAccount("B", Money.of("1000.00"));
+
+        List<Runnable> tasks = new ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+            tasks.add(() -> repeat(200, () -> transferQuietly("A", "B")));
+            tasks.add(() -> repeat(200, () -> transferQuietly("B", "A")));
+        }
+        assertTimeoutPreemptively(Duration.ofSeconds(20), () -> runConcurrently(tasks));
+
+        Map<String, List<Transaction>> byTransfer = Stream
+                .concat(service.getTransactionHistory("A").stream(), service.getTransactionHistory("B").stream())
+                .collect(Collectors.groupingBy(Transaction::transferId));
+        assertThat(byTransfer).isNotEmpty();
+        byTransfer.values().forEach(pair -> {
+            assertThat(pair).extracting(Transaction::type)
+                    .containsExactlyInAnyOrder(TransactionType.TRANSFER_OUT, TransactionType.TRANSFER_IN);
+            assertThat(pair.get(0).amount()).isEqualTo(pair.get(1).amount());
+        });
     }
 }
