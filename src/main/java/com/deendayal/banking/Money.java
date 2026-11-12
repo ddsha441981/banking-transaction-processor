@@ -66,4 +66,8 @@ public final class Money implements Comparable<Money> {
     public String toString() {
         return amount.toPlainString();
     }
+
+    public BigDecimal amount() {
+        return amount;
+    }
 }

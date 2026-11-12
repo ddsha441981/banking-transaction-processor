@@ -61,4 +61,10 @@ class MoneyTest {
         assertThat(Money.ZERO.isZero()).isTrue();
         assertThat(Money.of("0.01").isZero()).isFalse();
     }
+
+    @Test
+    void exposesItsAmountWithTwoDecimalPlaces() {
+        assertThat(Money.of("12.5").amount()).isEqualByComparingTo("12.50");
+        assertThat(Money.of("12.5").amount().scale()).isEqualTo(2);
+    }
 }
