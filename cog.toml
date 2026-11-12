@@ -1,18 +1,11 @@
-from_latest_tag = false
-ignore_merge_commits = false
-disable_changelog = false
-disable_bump_commit = false
-generate_mono_repository_global_tag = true
-generate_mono_repository_package_tags = true
-branch_whitelist = []
-skip_ci = "[skip ci]"
-skip_untracked = false
-pre_bump_hooks = []
-post_bump_hooks = []
-pre_package_bump_hooks = []
-post_package_bump_hooks = []
+from_latest_tag = true
+
+pre_bump_hooks = [
+    "mvn versions:set -DnewVersion={{version}} -DgenerateBackupPoms=false"
+]
 
 [git_hooks]
+pre-commit = "gitleaks protect --staged --verbose"
 
 [commit_types]
 
@@ -21,10 +14,3 @@ path = "CHANGELOG.md"
 authors = []
 
 [bump_profiles]
-
-[packages]
-pre_commit_hooks = ["gitleaks protect --staged --verbose"]
-
-pre_bump_hooks = [
-    "mvn versions:set -DnewVersion={{version}} -DgenerateBackupPoms=false"
-]
