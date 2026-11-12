@@ -1,0 +1,10 @@
+title = "Gitleaks Config for Spring Boot"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ignore test files and dummy credentials"
+paths = [
+    '''src/test/.*'''
+]
