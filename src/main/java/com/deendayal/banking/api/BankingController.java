@@ -2,6 +2,8 @@ package com.deendayal.banking.api;
 
 import com.deendayal.banking.BankingService;
 import com.deendayal.banking.Money;
+import com.deendayal.banking.Transaction;
+import com.deendayal.banking.TransactionType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -16,6 +18,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.math.BigDecimal;
 import java.net.URI;
+import java.time.Instant;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api")
@@ -48,5 +52,44 @@ public class BankingController {
     }
 
     public record BalanceResponse(String accountId, BigDecimal balance) {
+    }
+
+    @PostMapping("/accounts/{id}/deposits")
+    public BalanceResponse deposit(@PathVariable String id, @Valid @RequestBody AmountRequest request) {
+        bank.deposit(id, Money.of(request.amount()));
+        return balanceOf(id);
+    }
+
+    @PostMapping("/accounts/{id}/withdrawals")
+    public BalanceResponse withdraw(@PathVariable String id, @Valid @RequestBody AmountRequest request) {
+        bank.withdraw(id, Money.of(request.amount()));
+        return balanceOf(id);
+    }
+
+    @PostMapping("/transfers")
+    public ResponseEntity<Void> transfer(@Valid @RequestBody TransferRequest request) {
+        bank.transfer(request.fromAccountId(), request.toAccountId(), Money.of(request.amount()));
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/accounts/{id}/transactions")
+    public List<TransactionResponse> history(@PathVariable String id) {
+        return bank.getTransactionHistory(id).stream().map(TransactionResponse::from).toList();
+    }
+
+    public record AmountRequest(@NotNull BigDecimal amount) {
+    }
+
+    public record TransferRequest(@NotBlank String fromAccountId, @NotBlank String toAccountId,
+                                  @NotNull BigDecimal amount) {
+    }
+
+    public record TransactionResponse(TransactionType type, BigDecimal amount, BigDecimal balanceAfter,
+                                      Instant timestamp, String counterpartyId) {
+
+        static TransactionResponse from(Transaction t) {
+            return new TransactionResponse(t.type(), t.amount().amount(), t.balanceAfter().amount(),
+                    t.timestamp(), t.counterpartyId());
+        }
     }
 }
