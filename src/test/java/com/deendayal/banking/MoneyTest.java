@@ -4,9 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
-import static org.assertj.core.api.Assertions.assertThatNullPointerException;
+import static org.assertj.core.api.Assertions.*;
 
 class MoneyTest {
 
@@ -66,5 +64,13 @@ class MoneyTest {
     void exposesItsAmountWithTwoDecimalPlaces() {
         assertThat(Money.of("12.5").amount()).isEqualByComparingTo("12.50");
         assertThat(Money.of("12.5").amount().scale()).isEqualTo(2);
+    }
+
+    @Test
+    void invalidAmountsAreReportedAsInvalidAmountExceptions() {
+        assertThatThrownBy(() -> Money.of("-0.01")).isInstanceOf(InvalidAmountException.class);
+        assertThatThrownBy(() -> Money.of("10.005")).isInstanceOf(InvalidAmountException.class);
+        assertThatThrownBy(() -> Money.of("1.00").minus(Money.of("2.00")))
+                .isInstanceOf(InvalidAmountException.class);
     }
 }

@@ -27,10 +27,10 @@ public final class Money implements Comparable<Money> {
     public static Money of(BigDecimal value) {
         Objects.requireNonNull(value, "Amount must not be null");
         if (value.signum() < 0) {
-            throw new IllegalArgumentException("Amount must not be negative: " + value);
+            throw new InvalidAmountException("Amount must not be negative: " + value);
         }
         if (value.stripTrailingZeros().scale() > SCALE) {
-            throw new IllegalArgumentException("Amount must have at most " + SCALE + " decimal places: " + value);
+            throw new InvalidAmountException("Amount must have at most " + SCALE + " decimal places: " + value);
         }
         return new Money(value.setScale(SCALE));
     }
