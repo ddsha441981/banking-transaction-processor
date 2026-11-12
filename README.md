@@ -28,33 +28,38 @@ A small, test-driven service that processes banking transactions across multiple
 
 Requires Java 17 and Maven.
 
+
+
 Run the tests:
 
 ```
 mvn clean test
 ```
 
-Try it by hand with the console. Type `demo` for a scripted walk-through, or `help` for the commands:
+Start the REST API (port 8080):
 
 ```
-mvn -q clean compile
-java -cp target/classes com.deendayal.banking.BankingConsole
+mvn spring-boot:run
 ```
 
-Example session:
+| Method | URL | Purpose | Success |
+|---|---|---|---|
+| POST | `/api/accounts` | open an account `{"id","openingBalance"}` | 201 |
+| GET | `/api/accounts/{id}/balance` | current balance | 200 |
+| POST | `/api/accounts/{id}/deposits` | deposit `{"amount"}` | 200 + balance |
+| POST | `/api/accounts/{id}/withdrawals` | withdraw `{"amount"}` | 200 + balance |
+| POST | `/api/transfers` | transfer `{"fromAccountId","toAccountId","amount"}` | 204 |
+| GET | `/api/accounts/{id}/transactions` | ledger, oldest first | 200 |
+
+Errors use RFC 7807 problem details: 404 unknown account, 409 duplicate account, 422 insufficient funds, 400 invalid amount, same-account transfer, missing field or malformed JSON.
+
+Example:
 
 ```
-> open ALICE 100.00
-> open BOB 50.00
-> transfer ALICE BOB 30.00
-> balance ALICE
-> history BOB
-> withdraw ALICE 1000
-> exit
+curl -X POST localhost:8080/api/accounts -H 'Content-Type: application/json' -d '{"id":"ALICE","openingBalance":100.00}'
+curl -X POST localhost:8080/api/accounts/ALICE/deposits -H 'Content-Type: application/json' -d '{"amount":25.00}'
+curl localhost:8080/api/accounts/ALICE/transactions
 ```
-
-The console is a thin convenience layer over `BankingService`. It only translates text commands into service calls and contains no business rules.
-
 ## Requirements coverage
 
 | Requirement from the brief | Where it is tested |
@@ -70,7 +75,7 @@ The console is a thin convenience layer over `BankingService`. It only translate
 | All of the above through the public API only | `RequirementsAcceptanceTest` |
 
 ## Scope decisions
-- The brief asks for "APIs to query balances and histories". I built them as service methods (`BankingService`) and did not add an HTTP layer: with a 3-4 hour timebox I preferred to spend the time on correctness (validation, atomic transfers, concurrency) and tests. A thin Spring Boot controller over `BankingService` is the natural next step, and the service never exposes `Account` objects, so it could be added without touching the domain.
+- The service is exposed through a thin Spring Boot REST layer (`BankingController`). It only translates HTTP into `BankingService` calls; the domain classes have no Spring imports and stayed unchanged. I first built and tested the domain on its own, then added the HTTP layer on top.
 - A small interactive console (`BankingConsole`) is included only so the service can be exercised by hand. It is not the REST API and has a few tests of its own.
 - Account ids are case-sensitive and used as given. No trimming or normalisation.
 
@@ -113,6 +118,9 @@ There is a boundary test for it, plus a one-cent overdraft test on the other sid
 **History is a read-only snapshot.**
 `getTransactionHistory` returns an immutable copy in the order operations happened. Callers cannot change the ledger through it, and a list obtained earlier does not change when later operations occur. Tests cover both.
 
+**REST layer.**
+`BankingConfig` wires the plain domain classes into Spring. `ApiExceptionHandler` maps domain exceptions to statuses: 404 for an unknown account, 409 for a duplicate id, 422 for insufficient funds (the request is well-formed but cannot be processed in the current state), and 400 for invalid input. Amounts are JSON numbers read as `BigDecimal`, so `10.005` reaches `Money` unrounded and is rejected. Deposit and withdrawal return the balance read right after the operation; under concurrent requests it may already include another request's change. API tests use MockMvc against the full application context and check both the status and that failed requests leave state unchanged. With a multi-threaded web server, the per-account locking from the concurrency work now matters in practice.
+
 **Concurrency: one lock per account, transfers lock both in id order.**
 Each `Account` guards its balance and ledger with its own monitor, so the funds check, the balance update and the ledger append happen as one step. This prevents lost updates and overdrafts under contention, and keeps every ledger's last `balanceAfter` equal to the real balance. A transfer takes both account locks in a fixed order (by id), which makes it one unit and rules out the classic A->B / B->A deadlock. Locks are per account, so transfers between unrelated accounts do not block each other. The concurrency tests release many threads at once; the first version of them failed before the locking existed. Monitors were chosen over `ReentrantLock` for simplicity; `ReentrantLock` would allow timeouts and fair ordering if needed.
 
@@ -134,6 +142,8 @@ Each `Account` guards its balance and ledger with its own monitor, so the funds 
 - `Account` is mutable and protected by locks. This is simple and fits the current scope, but an immutable design with explicit state transitions could be easier to reason about.
 - Accounts are never removed, so accounts and ledgers grow for the life of the process.
 - The console has minimal input handling: it reports errors but does not offer editing, quoting or autocompletion.
+- No authentication, and no pagination on the transactions endpoint.
+- Spring Boot 3.5.x was chosen for a stable, well-known test setup; moving to Spring Boot 4.x is a planned upgrade.
 
 ## What I would do next
 1. A thin REST layer over `BankingService`.
