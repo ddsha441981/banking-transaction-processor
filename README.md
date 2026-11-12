@@ -48,7 +48,7 @@ mvn spring-boot:run
 | GET | `/api/accounts/{id}/balance` | current balance | 200 |
 | POST | `/api/accounts/{id}/deposits` | deposit `{"amount"}` | 200 + balance |
 | POST | `/api/accounts/{id}/withdrawals` | withdraw `{"amount"}` | 200 + balance |
-| POST | `/api/transfers` | transfer `{"fromAccountId","toAccountId","amount"}` | 204 |
+| POST | `/api/transfers` | transfer `{"fromAccountId","toAccountId","amount"}` | 200 + `{"transferId"}` |
 | GET | `/api/accounts/{id}/transactions` | ledger, oldest first | 200 |
 
 Errors use RFC 7807 problem details with an extra stable `code` that clients can branch on (the `detail` text may change):
@@ -112,8 +112,11 @@ There is a boundary test for it, plus a one-cent overdraft test on the other sid
 **Service layer and repository.**
 `BankingService` is the single entry point and never hands out `Account` objects, so callers cannot bypass the validation rules. Storage sits behind an `AccountRepository` interface, so a database could replace the in-memory map without touching the service. Account id uniqueness is enforced with `ConcurrentHashMap.putIfAbsent`, so the check and the insert are one atomic step.
 
+**Transfer ids link the two sides of a transfer.**
+A transfer writes one entry in each account's ledger. Both carry the same `transferId`, so an auditor can pair them without guessing from timestamps and amounts. `BankingService` generates the id because a single `Account` only sees one side of a transfer; the generator is injected (a `Supplier<String>`, UUID by default), the same way the `Clock` is, so tests can use predictable ids. `Transaction` refuses to exist in an inconsistent state: transfer entries must have a counterparty and a transfer id, other entries must not. `POST /api/transfers` returns the id so a client can reconcile without searching the history. A separate `Transfer` entity would model this more explicitly, but it adds a second thing to store and keep consistent, so I kept the id on the entries. A concurrent test checks that every transfer id pairs exactly one outgoing and one incoming entry.
+
 **Ledger design.**
-- Each `Transaction` is an immutable record holding type, amount, `balanceAfter`, timestamp and, for transfers, the counterparty account id. `balanceAfter` lets a reader audit an account without replaying every earlier entry.
+- Each `Transaction` is an immutable record holding type, amount, `balanceAfter`, timestamp and, for transfers, the counterparty account id and a `transferId`. `balanceAfter` lets a reader audit an account without replaying every earlier entry.
 - The opening balance is not a ledger entry. The ledger records only operations performed after the account is opened.
 - `getTransactions()` returns a copy, so callers cannot modify the ledger.
 - Only successful operations are recorded.
