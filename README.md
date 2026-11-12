@@ -141,6 +141,7 @@ Each `Account` guards its balance and ledger with its own monitor, so the funds 
 - Concurrency tests start many threads at the same instant and run opposite transfers under a timeout, so a deadlock shows up as a failing test instead of a hanging build.
 - `RequirementsAcceptanceTest` walks through each requirement of the brief using only the public service API.
 - The console was also exercised by hand with its `demo` command.
+- API tests include a concurrency suite that fires real HTTP requests from 16 client threads at once against a running server (opposite transfers and competing withdrawals), asserting that money is conserved, no account is overdrawn and every ledger stays consistent.
 
 ## Limitations
 - No persistence. State is lost when the process stops.
