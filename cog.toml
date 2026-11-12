@@ -1,4 +1,5 @@
 from_latest_tag = true
+skip_untracked = true
 
 pre_bump_hooks = [
     "mvn versions:set -DnewVersion={{version}} -DgenerateBackupPoms=false",
