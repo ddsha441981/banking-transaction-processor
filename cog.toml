@@ -1,7 +1,8 @@
 from_latest_tag = true
 
 pre_bump_hooks = [
-    "mvn versions:set -DnewVersion={{version}} -DgenerateBackupPoms=false"
+    "mvn versions:set -DnewVersion={{version}} -DgenerateBackupPoms=false",
+    "git add pom.xml"
 ]
 
 [git_hooks.pre-commit]
