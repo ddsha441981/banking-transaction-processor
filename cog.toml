@@ -4,8 +4,10 @@ pre_bump_hooks = [
     "mvn versions:set -DnewVersion={{version}} -DgenerateBackupPoms=false"
 ]
 
-[git_hooks]
-pre-commit = "gitleaks protect --staged --verbose"
+[git_hooks.pre-commit]
+script = """#!/bin/sh
+gitleaks protect --staged --verbose
+"""
 
 [commit_types]
 
