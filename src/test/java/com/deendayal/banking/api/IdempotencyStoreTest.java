@@ -1,6 +1,7 @@
 package com.deendayal.banking.api;
 
 import com.deendayal.banking.MutableClock;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -99,7 +100,9 @@ class IdempotencyStoreTest {
         }
     }
 
-    @Test
+    //Experiment
+//    @Test
+    @RepeatedTest(50)
     void manyThreadsRacingOnOneKeyRunTheOperationExactlyOnce() throws Exception {
         int threads = 16;
         ExecutorService pool = Executors.newFixedThreadPool(threads);

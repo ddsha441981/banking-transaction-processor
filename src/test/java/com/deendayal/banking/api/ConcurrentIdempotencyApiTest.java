@@ -68,7 +68,7 @@ class ConcurrentIdempotencyApiTest {
             //assertThat(responses).extracting(HttpResponse::statusCode).containsOnly(200, 409);
             // any mix of 200 (ran or replayed) and 409 (first still running) is fine, nothing else
             assertThat(responses).extracting(HttpResponse::statusCode).isSubsetOf(200, 409);
-            
+
             List<HttpResponse<String>> accepted = responses.stream()
                     .filter(r -> r.statusCode() == 200).toList();
             assertThat(accepted).isNotEmpty();
