@@ -2,6 +2,20 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.3.0 - 2026-11-13
+#### Documentation
+- update README for the REST API, transfer ids, error codes and idempotency keys - (d20ef9c) - ddsha441981
+#### Features
+- **(api)** support Idempotency-Key header on deposits, withdrawals and transfers - (5c29f44) - ddsha441981
+- **(idempotency)** add atomic idempotency store with replay and race protection - (36230ba) - ddsha441981
+#### Refactoring
+- make MutableClock reusable from other test packages - (6eb231b) - ddsha441981
+#### Tests
+- accept replays or in-progress rejections for simultaneous retries and repeat the race test - (a96a52f) - ddsha441981
+- simultaneous retries with one Idempotency-Key move the money exactly once - (0abdac8) - ddsha441981
+
+- - -
+
 ## 0.2.0 - 2026-11-12
 #### Documentation
 - describe transfer ids and the changed transfer response - (0fc6b92) - ddsha441981
